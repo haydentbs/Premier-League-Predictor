@@ -130,10 +130,10 @@ class Scraper:
 
 
 
-scraper = Scraper([22,23,24])
-table = scraper.get_data()
-table.to_csv('premier_league_data.csv', index=False)
-
+# scraper = Scraper([22,23,24])
+# table = scraper.get_data()
+# table.to_csv('premier_league_data.csv', index=False)
+table = pd.read_csv('premier_league_data.csv')
 
 print(table.columns)
 
