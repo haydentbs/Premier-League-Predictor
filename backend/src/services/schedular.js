@@ -1,39 +1,39 @@
-const cron = require('node-cron');
-const understatService = require('./understatService');
+// const cron = require('node-cron');
 
-class Scheduler {
-    start() {
-        // Update results every hour
-        cron.schedule('0 * * * *', async () => {
-            console.log('Running results update...');
-            try {
-                await understatService.updateResults();
-            } catch (error) {
-                console.error('Error updating results:', error);
-            }
-        });
 
-        // Update fixtures daily
-        cron.schedule('0 0 * * *', async () => {
-            console.log('Running fixtures update...');
-            try {
-                await understatService.updateFixtures();
-            } catch (error) {
-                console.error('Error updating fixtures:', error);
-            }
-        });
+// class Scheduler {
+//     start() {
+//         // Update results every hour
+//         cron.schedule('0 * * * *', async () => {
+//             console.log('Running results update...');
+//             try {
+//                 await understatService.updateResults();
+//             } catch (error) {
+//                 console.error('Error updating results:', error);
+//             }
+//         });
 
-        // Initial data fetch
-        this.initialFetch();
-    }
+//         // Update fixtures daily
+//         cron.schedule('0 0 * * *', async () => {
+//             console.log('Running fixtures update...');
+//             try {
+//                 await understatService.updateFixtures();
+//             } catch (error) {
+//                 console.error('Error updating fixtures:', error);
+//             }
+//         });
 
-    async initialFetch() {
-        try {
-            await understatService.updateAllData();
-        } catch (error) {
-            console.error('Error in initial fetch:', error);
-        }
-    }
-}
+//         // Initial data fetch
+//         this.initialFetch();
+//     }
 
-module.exports = new Scheduler();
+//     async initialFetch() {
+//         try {
+//             await understatService.updateAllData();
+//         } catch (error) {
+//             console.error('Error in initial fetch:', error);
+//         }
+//     }
+// }
+
+// module.exports = new Scheduler();

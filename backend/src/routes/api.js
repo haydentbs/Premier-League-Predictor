@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-const understatService = require('../services/understatService');
 
 // Basic API test endpoint
 router.get('/test', (req, res) => {
@@ -11,67 +10,9 @@ router.get('/test', (req, res) => {
     });
 });
 
-// Database test endpoint
-router.get('/db-test', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT NOW()');
-        res.json({
-            message: 'Database connected!',
-            timestamp: result.rows[0].now
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: 'Database connection failed',
-            error: error.message
-        });
-    }
-});
-
-router.post('/query', async (req, res) => {
-    try {
-        const { query } = req.body;
-        
-        // Basic security check - only allow SELECT queries
-        if (!query.trim().toLowerCase().startsWith('select')) {
-            return res.status(400).json({
-                message: 'Only SELECT queries are allowed',
-                error: 'Invalid query type'
-            });
-        }
-
-        const result = await pool.query(query);
-        res.json({
-            message: 'Query executed successfully',
-            data: result.rows,
-            rowCount: result.rowCount
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: 'Query execution failed',
-            error: error.message
-        });
-    }
-});
-
-
-
-router.get('/teams', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM teams ORDER BY team_name');
-        res.json({
-            message: 'Teams retrieved successfully',
-            data: result.rows
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: 'Failed to retrieve teams',
-            error: error.message
-        });
-    }
-});
-
-// Get all matches with team names
+// Get all matches
 router.get('/matches', async (req, res) => {
+    console.log('Fetching matches from database...');
     try {
         const result = await pool.query(`
             SELECT 
@@ -80,19 +21,28 @@ router.get('/matches', async (req, res) => {
                 at.team_name as away_team,
                 m.home_score,
                 m.away_score,
+                m.home_xg,
+                m.away_xg,
                 m.match_date,
                 m.season,
-                m.status
+                m.status,
+                m.rolling_xg,
+                m.rolling_xga,
+                m.form_5,
+                m.form_10
             FROM matches m
             JOIN teams ht ON m.home_team_id = ht.team_id
             JOIN teams at ON m.away_team_id = at.team_id
             ORDER BY m.match_date DESC
         `);
+        
+        console.log(`Successfully retrieved ${result.rows.length} matches`);
         res.json({
             message: 'Matches retrieved successfully',
             data: result.rows
         });
     } catch (error) {
+        console.error('Error fetching matches:', error);
         res.status(500).json({
             message: 'Failed to retrieve matches',
             error: error.message
@@ -126,6 +76,22 @@ router.get('/teams/:teamId/matches', async (req, res) => {
     } catch (error) {
         res.status(500).json({
             message: 'Failed to retrieve team matches',
+            error: error.message
+        });
+    }
+});
+
+// Get all teams
+router.get('/teams', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM teams ORDER BY team_name');
+        res.json({
+            message: 'Teams retrieved successfully',
+            data: result.rows
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Failed to retrieve teams',
             error: error.message
         });
     }

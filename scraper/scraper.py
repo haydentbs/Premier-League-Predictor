@@ -1,144 +1,107 @@
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 import pandas as pd
-from io import StringIO 
+import time
+import random
 
-class Scraper:
+class MatchScraper:
     def __init__(self, seasons):
         self.base_url = 'https://fbref.com/en/comps/9/'
         self.seasons = seasons
 
+        # Configure Chrome options
+        self.chrome_options = Options()
+        self.chrome_options.add_argument('--headless')  # Run in headless mode
+        self.chrome_options.add_argument('--no-sandbox')
+        self.chrome_options.add_argument('--disable-dev-shm-usage')
+        self.chrome_options.add_argument('--disable-gpu')
+        self.chrome_options.add_argument('--window-size=1920,1080')
+        
+        # Add random user agent
+        user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        self.chrome_options.add_argument(f'user-agent={user_agent}')
+
     def get_url(self, season):
-        
         return f'{self.base_url}20{season}-20{season+1}/schedule/20{season}-20{season+1}-Premier-League-Scores-and-Fixtures'
-        
+
     def scrape_website(self, season):
-        # Add headers to mimic a browser request
-        headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-        
+        try:
+            print(f"Scraping season {season}...")
+            driver = webdriver.Chrome(options=self.chrome_options)
+            
+            try:
+                url = self.get_url(season)
+                print(f"Accessing URL: {url}")
+                driver.get(url)
+                
+                # Wait for tables to load
+                print("Waiting for page to load...")
+                time.sleep(5)  # Allow JavaScript to render
+                
+                # Find all tables
+                tables = driver.find_elements(By.TAG_NAME, "table")
+                print(f"Found {len(tables)} tables")
+                
+                if len(tables) >= 10:
+                    target_table = tables[9]  # Index 9 for the 10th table
+                    print("Found target table!")
+                    
+                    # Get table HTML
+                    table_html = target_table.get_attribute('outerHTML')
+                    
+                    # Convert to DataFrame
+                    df = pd.read_html(table_html)[0]
 
-        
-        # Make the request
-        response = requests.get(self.get_url(season), headers=headers)
-        
-        # Check if request was successful
-        if response.status_code == 200:
-            # Parse the HTML
-            soup = BeautifulSoup(response.text, 'html.parser')
-            return soup
-        else:
-            print(f"Failed to retrieve the page. Status code: {response.status_code}")
+                    header_values = list(df.columns)
+                    df = df[~df.apply(lambda row: all(str(val) in header_values for val in row), axis=1)]
+                    # print(f"Table shape: {df.shape}")
+                    # print("Columns:", list(df.columns))
+                    
+                    return df
+                else:
+                    print(f"Not enough tables found. Only found {len(tables)} tables.")
+                    return None
+                    
+            except Exception as e:
+                print(f"Error processing page: {str(e)}")
+                return None
+            finally:
+                driver.quit()
+                
+        except Exception as e:
+            print(f"Error initializing driver: {str(e)}")
             return None
-        
-    
-    
-    def get_tables(self):
-        # Method 1: Find table by ID
 
+    def get_tables(self):
+        print("Starting to get tables...")
         df = None
 
         for season in self.seasons:
-            soup = self.scrape_website(season)
+            try:
+                df_temp = self.scrape_website(season)
+                if df_temp is None:
+                    print(f"Skipping season {season} due to scraping error")
+                    continue
 
-            # table = soup.find('table', {'id': 'sched_2023-2024_9_1'})  # FBRef usually has specific table IDs
-        
-        # Method 2: Find table by class
-            table = soup.find('table', {'class': 'stats_table'})
-        
-        # Convert to DataFrame
-            if table:
-                html_string = str(table)  # Convert table to string
-                df_temp = pd.read_html(StringIO(html_string))[0]  # Wrap in StringIO
-                df_temp['season'] = season 
+                df_temp['season'] = season
+                print(f"Successfully processed season {season}")
 
-            if df is None:
-                df = df_temp
-            else:
-                df = pd.concat([df, df_temp])
-                
+                if df is None:
+                    df = df_temp
+                else:
+                    df = pd.concat([df, df_temp])
+
+                # Add delay between seasons
+                delay = random.uniform(0, 1)
+                print(f"Waiting {delay:.2f} seconds before next season...")
+                time.sleep(delay)
+
+            except Exception as e:
+                print(f"Error processing season {season}: {str(e)}")
+                continue
+
+        if df is None:
+            raise Exception("Failed to retrieve any data from all seasons")
+
         return df
-    
-    def process_data(self):
-        df = self.get_tables()
-
-        df['Status'] = df['Score'].apply(lambda x: 'no' if pd.isna(x) else 'yes')
-        df['H.team'] = df['Home']
-        df['A.team'] = df['Away']
-        df['H.xg'] = df['xG']
-        df['A.xg'] = df['xG.1']
-        df['H.xga'] = df['xG.1']
-        df['A.xga'] = df['xG']
-        df['Result'] = df['Score'].apply(lambda x: None if pd.isna(x) else 3 if x.split('–')[0] > x.split('–')[1] else 1 if x.split('–')[0] == x.split('–')[1] else 0)
-        
-
-        features = ['Date', 'Day','Time', 'Result', 'H.team', 'A.team', 'H.xg', 'A.xg', 'H.xga', 'A.xga', 'Status']
-
-        return df[features]
-
-
-    def feature_engineering(self):
-
-        df = self.process_data()
-
-        # Rolling Averages
-        home_df = df[['H.team', 'A.team','H.xg', 'H.xga', 'Date',  'Status' ,'Result']].copy()
-        away_df = df[['A.team', 'H.team','A.xg', 'A.xga', 'Date', 'Status', 'Result']].copy()
-        away_df['Result_True'] = away_df['Result'].apply(lambda x: 3 if x ==0 else 0 if x==3 else 1)
-        away_df.drop(columns=['Result'], inplace=True)
-
-        home_df.columns = ['Team', 'Opponent', 'xg', 'xga', 'Date', 'Status', 'Result']
-        away_df.columns = ['Team', 'Opponent', 'xg', 'xga', 'Date', 'Status', 'Result']
-        home_df['location'] = 'home'
-        away_df['location'] = 'away'
-
-        team_df = pd.concat([home_df, away_df])
-
-        team_df = team_df.sort_values(['Team', 'Date'])
-        team_df = team_df.groupby('Team', group_keys=False).apply(lambda x: x)
-
-        team_df['rolling_xg'] = team_df['xg'].rolling(window=5, min_periods=1).mean()
-        team_df['rolling_xga'] = team_df['xga'].rolling(window=5, min_periods=1).mean()
-
-        team_df['rolling_xg_diff'] = team_df['rolling_xg'] - team_df['rolling_xga']
-
-        team_df['form_rolling_5'] = team_df['Result'].rolling(window=5, min_periods=1).mean()
-        team_df['form_rolling_10'] = team_df['Result'].rolling(window=10, min_periods=1).mean()
-
-        team_df['opponent_form_rolling_3'] = team_df['Result'].rolling(window=3, min_periods=1).mean()
-        team_df['opponent_form_rolling_6'] = team_df['Result'].rolling(window=6, min_periods=1).mean()
-
-        flat_df = team_df.reset_index()
-        flat_df = flat_df.sort_values(['Team', 'Opponent', 'location','Date'])
-        team_df = flat_df.groupby(['Team', 'Opponent', 'location'], 
-                            group_keys=False, 
-                            ).apply(lambda x: x)
-
-        team_df['opponent_home_form_rolling_2'] = team_df['Result'].rolling(window=2, min_periods=1).mean()
-        team_df['opponent_away_form_rolling_2'] = team_df['Result'].rolling(window=2, min_periods=1).mean()
-
-        team_df.reset_index( inplace=True)
-        team_df.sort_values(['Date', 'index'], inplace=True)
-
-
-        return team_df
-    
-    def get_data(self):
-        df = self.feature_engineering()
-        return df
-
-
-
-# scraper = Scraper([22,23,24])
-# table = scraper.get_data()
-# table.to_csv('premier_league_data.csv', index=False)
-table = pd.read_csv('premier_league_data.csv')
-
-print(table.columns)
-
-print(table.head())
-print(table.tail())
-
-print(table[table['index']==0])
-
