@@ -1,18 +1,10 @@
-# Use the official Node.js image
-FROM node:18
+FROM python:3.9-slim
 
-# Create app directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
-RUN npm install
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Copy source
 COPY . .
 
-# Expose the backend port
-EXPOSE 5000
-
-# Start the backend server
-CMD ["npm", "start"]
+CMD ["python", "app.py"]
