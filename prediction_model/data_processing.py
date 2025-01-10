@@ -7,7 +7,7 @@ class DataProcessing:
 
     def remove_future_games(self):
         self.df = self.df[self.df['status_of_match'] == 'yes']
-        print(len(self.df['team']))
+        # print(len(self.df['team']))
         self.df.dropna(inplace=True)
         return self.df
     
@@ -40,10 +40,10 @@ class DataProcessing:
         data = self.remove_future_games()
         data = self.process_numerical_columns()
         data = self.process_categorical_columns()
-        print(data.head())
+        # print(data.head())
 
         features =['form_rolling_5', 'form_rolling_10','rolling_xg_diff','rolling_xga_diff','opponent_form_rolling_3','opponent_form_rolling_6','team','opponent']
-        return data, features
+        return data, features, self.label_encoders
 
 
 

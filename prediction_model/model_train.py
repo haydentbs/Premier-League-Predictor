@@ -23,9 +23,9 @@ class ModelTrain:
     def create_training_data(self,df):
 
         processing = DataProcessing(df)
-        training_data, features = processing.create_training_data()
-        print(training_data.head())
-        print(df.head())
+        training_data, features, self.label_encoders = processing.create_training_data()
+        # print(training_data.head())
+        # print(df.head())
         X = training_data[features]
         y = training_data['result']
 
@@ -36,12 +36,12 @@ class ModelTrain:
 
         data = self.import_data()
 
-        print(data.isna().sum())
+        # print(data.isna().sum())
         X_train, X_test, y_train, y_test = self.create_training_data(data)
 
         model =  LogisticRegression()
 
-        print(y_train)
+        # print(y_train)
 
         model.fit(X_train, y_train)
         y_pred  = model.predict(X_test)
@@ -55,14 +55,35 @@ class ModelTrain:
         comparison_dataset = X_test.copy()
         comparison_dataset['result'] = y_test
         comparison_dataset['prediction'] = y_pred
-        print(comparison_dataset.head())
+        # print(comparison_dataset.head())
+
+        return comparison_dataset
+
+    def display(self, results):
+
+        miss = len(results[results['result'] != results['prediction']])
+        total = 1 - len(results['result'])
+
+        print('Success rate: ', miss/total)
+
+        for team in self.df['team'].unique():
+
+            team_index = self.label_encoders['team'].transform([team])
+        
+            team_data = results[results['team'] == team_index[0]]
+            misses = team_data[team_data['result'] != team_data['prediction']]
+
+            print(team)
+            print(len(misses), '/', len(team_data['result']),'\n')
+
 
 # MSE=0.57, R2=0.27
 
 
 def main():
     Train = ModelTrain()
-    Train.train()
+    data = Train.train()
+    Train.display(data)
 
 main()
 
