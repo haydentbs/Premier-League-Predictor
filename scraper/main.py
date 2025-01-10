@@ -31,7 +31,7 @@ def run_update(config):
 
 if __name__ == "__main__":
     config = {
-        'seasons': [23],
+        'seasons': [17,18,19,20,21,22,23,24],
         'database': {
             'user': 'postgres',
             'password': 'postgres',

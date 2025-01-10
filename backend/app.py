@@ -39,7 +39,7 @@ def get_teams():
 def get_matches():
     try:
         # Get query parameters
-        limit = request.args.get('limit', 100, type=int)
+        limit = request.args.get('limit', 3000, type=int)
         team = request.args.get('team')
         
         query = """
