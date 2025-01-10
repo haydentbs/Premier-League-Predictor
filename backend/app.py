@@ -53,7 +53,15 @@ def get_matches():
                 m.xga,
                 m.status_of_match,
                 m.result,
-                m.location_of_match
+                m.location_of_match,
+                m.rolling_xg,
+                m.rolling_xga,
+                m.rolling_xg_diff,
+                m.rolling_xga_diff,
+                m.form_rolling_5,
+                m.form_rolling_10,
+                m.opponent_form_rolling_3,
+                m.opponent_form_rolling_6
             FROM matches m
             JOIN teams ht ON m.team_id = ht.team_id
             JOIN teams at ON m.opponent_id = at.team_id
