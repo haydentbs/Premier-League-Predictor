@@ -1,19 +1,23 @@
 from scraper import MatchScraper
 from processor import DataProcessor
 from database_handler import DatabaseHandler
+import os
+import pandas as pd
 
 def run_update(config):
     # Initialize components
-    scraper = MatchScraper(config['seasons'])
+
+    if os.path.exists('data/raw_data.csv'):
+        raw_data = pd.read_csv('data/raw_data.csv')
+
+    else:
+        scraper = MatchScraper(config['seasons'])
+        
+        
+        raw_data = scraper.get_tables()
+        raw_data.to_csv('data/raw_data.csv')
+    
     processor = DataProcessor()
-    
-    
-    # Check database connection
-    
-    
-    # Scrape data
-    raw_data = scraper.get_tables()
-    
     # Process data
     df = processor.process_data(raw_data)
     processor.validate_data(df)

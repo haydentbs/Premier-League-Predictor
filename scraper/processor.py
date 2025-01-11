@@ -32,6 +32,7 @@ class DataProcessor:
     def process_data(self, df):
 
         df = self.sort_data(df)
+        df.dropna(inplace=True)
 
         # Rolling Averages
         home_df = df[['H.team', 'A.team','H.xg', 'H.xga', 'H.goals', 'A.goals', 'Date',  'Status' ,'Result']].copy()
@@ -55,8 +56,8 @@ class DataProcessor:
 
         # print(team_df.head())
 
-        team_df['rolling_xg_diff'] = team_df.apply(lambda row: row['rolling_xg'] - row['goals'], axis=1)
-        team_df['rolling_xga_diff'] = team_df.apply(lambda row: row['rolling_xga'] - row['opponent_goals'], axis=1)
+        team_df['rolling_xg_diff'] = team_df.shift().apply(lambda row: row['xg'] - row['goals'], axis=1).rolling(window=5, min_periods=1).mean()
+        team_df['rolling_xga_diff'] = team_df.shift().apply(lambda row: row['xga'] - row['opponent_goals'], axis=1).rolling(window=5, min_periods=1).mean()
 
         team_df['form_rolling_5'] = team_df['Result'].shift().rolling(window=5, min_periods=1).mean()
         team_df['form_rolling_10'] = team_df['Result'].shift().rolling(window=10, min_periods=1).mean()
